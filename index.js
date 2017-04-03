@@ -57,7 +57,7 @@ function hubstia(req, res, next) {
 		
 	/***
 	 * NOTE: CALL TO WISTIA TO GET EMAIL FROM WEBHOOK
-	 ***/
+	 */
 	 
 	rp({
 		method: 'GET',
@@ -68,7 +68,7 @@ function hubstia(req, res, next) {
 	then(function (response) {
 		/***
 		 * NOTE: GET VISITOR'S `play_count` AND `visitor_identity` EMAIL FROM WISTIA
-		 ***/
+		 */
 		if (response.statusCode == 200) {
 			console.log('Wistia Visitor `play_count`: ' + response.body.play_count);
 			playCount = response.body.play_count;
@@ -76,9 +76,9 @@ function hubstia(req, res, next) {
 			if (response.body.visitor_identity.email != null) {
 				/***
 				 * NOTE: IF WISTIA VISITOR HAS AN EMAIL ATTACHED TO THEIR ID MAKE CALL TO HUBSPOT
-				 *       TO LOOKUP THEIR INFORMATION FROM THE WISTIA RESPONSE,
-				 *       THIS WON'T RUN IF THEY DON'T HAVE AN EMAIL
-				 ***/
+				 *       TO LOOKUP THEIR INFORMATION FROM THE WISTIA RESPONSE, THIS WON'T RUN IF
+				 *       THEY DON'T HAVE AN EMAIL, THAT WILL THEN END THE PROMISE CHAIN AND WE DONE
+				 */
 				contactEmail = response.body.visitor_identity.email;
 				console.log('Wistia Visitor `email`: ' + contactEmail);
 				hubspotPath = 'https://api.hubapi.com/contacts/v1/contact/email/' + contactEmail + '/profile?hapikey=' + hapiKey;	
@@ -100,8 +100,8 @@ function hubstia(req, res, next) {
 		if (response.statusCode == 200) {
 			/***
 			 * NOTE: PRINTS THE EMAIL IN THE HUBSPOT CONTACT RECORD. IF THE VALUE OF THE HUBSPOT CONTACT RECORD ISN'T SET
-			 *       THEN SET A DEFAULT VALUE OF 0. THIS VALUE IS THEN UPDATED BY THE VALUE TAKEN FROM WISTIA
-			 ***/
+			 *       THEN SET A DEFAULT VALUE OF 0. THIS VALUE (EITHER 0 OR X FROM WISTIA) IS THEN UPDATED INTO HUBSPOT IN THE FOLLOWING POST
+			 */
 			console.log('HubSpot Contact `email`: ' + response.body.properties.email.value);
 			if (response.body.properties.videos_played === undefined || response.body.properties.videos_played.value === '') {
 				videosPlayed = 0;
@@ -118,7 +118,7 @@ function hubstia(req, res, next) {
 		if (playCount > videosPlayed) {
 			/***
 			 * NOTE: THIS WILL UPDATE THE HUBSPOT CONTACT RECORD WITH THE VALUE FROM WISTIA
-			 ***/		 
+			 */
 			console.log('Setting HubSpot Record To Value From Wistia');
 			
 			videosPlayed = playCount;
@@ -140,15 +140,16 @@ function hubstia(req, res, next) {
 
 	 	} else if (playCount === videosPlayed) {
 			/***
-			 * NOTE: DON'T DO ANYTHING IF THE VALUES ARE THE SAME
-			 ***/
+			 * NOTE: DON'T DO ANYTHING IF THE VALUES ARE THE SAME, THAT WOULD BE A WASTE OF A CALL
+			 */
 			console.log('Value\'s Are The Same');
 			
 			throw 'End Promise';
 		} else {
 			/***
-			 * NOTE: THIS WILL UPDATE THE INCREMENT THE HUBSPOT CONTACT RECORD IF IT IS HIGHER THAN THE VALUE FROM WISTIA
-			 ***/
+			 * NOTE: THIS WILL INCREMENT THE HUBSPOT CONTACT RECORD IF IT IS HIGHER THAN THE VALUE FROM WISTIA.
+			 *       THIS IS MAINLY USED FOR WHEN WISTIA'S PLAY COUNT VALUE HASN'T BEEN UPDATED YET AS IT IS NOT REAL-TIME
+			 */
 			console.log('Manually Incrementing HubSpot Record');
 			
 			videosPlayed += 1;
@@ -172,7 +173,7 @@ function hubstia(req, res, next) {
 	.then(function (response) {
 		/***
 		 * NOTE: DISPLAYS THE FINAL HUBSPOT CONTACT RECORD OF `videos_played` AFTER IT HAS BEEN UPDATED EITHER MANUALLY OR BY WISTIA'S VALUE
-		 ***/ 
+		 */ 
 		if(response.statusCode == 204) {
 			console.log('Updated | HubSpot Contact `videos_played`: ' + videosPlayed);
 		} else {
@@ -180,15 +181,19 @@ function hubstia(req, res, next) {
 		}
 	})
 	.catch(function(err) {
+		/***
+		 * NOTE: IF SOMETHING FAILS DURING THE PROMISE CHAIN OR ANYWHERE THIS BLOCK SHOULD FIRE WITH THE STACKTRACE OF THE ERROR
+		 */ 
 		if (err !== 'No Email' || err !== 'End Promise') {
 			console.error(err);
 		}
 	});
 
+	// GOOD RESPONSE AFTER EVERYTHING RUNS NICELY
 	res.send('OK\n');
 }
 
-// RUN FUNCTIONS ON POSTS TO THE URL
+// RUN BOTH FUNCTIONS UPON RECEIVING A POST TO THE SERVER
 app.post("/", verify, hubstia);
 
 // VISIBLE AT THE URL IN THE BROWSER DOESN'T DO ANYTHING THOUGH
