@@ -7,7 +7,8 @@
   },
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "xo"
   },
   "dependencies": {
     "body-parser": "^1.17.1",
@@ -28,5 +29,8 @@
     "wistia",
     "request"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "xo": "^0.18.1"
+  }
 }
