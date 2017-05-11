@@ -25,6 +25,9 @@ const wapiKey = process.env.WAPI_KEY;
 const hapiKey = process.env.HAPI_KEY;
 const uuid = process.env.UUID;
 
+// FOR SECRET KEY VERIFICATION
+const {getHash} = require('./signature-verification')
+
 // EASILY READ THE PAYLOAD FROM THE WEBHOOK
 app.use(bodyParser.json());
 
