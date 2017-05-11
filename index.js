@@ -5,7 +5,7 @@
 *  gathered from the webhook payload
 *
 *  TO GET STARTED
-*  * Add your HubSpot API & Wistia API keys and uuid to .env file
+*  * Add your HubSpot API & Wistia API keys and Wistia Secret Key to .env file
 *  * (Run a test webhook from Wistia to get the uuid of the payload)
 *  * Install dependencies via `npm install`
 *  * Run `node index.js` on a publicly visible IP
@@ -28,8 +28,9 @@ const uuid = process.env.UUID;
 // FOR SECRET KEY VERIFICATION
 const {getHash} = require('./signature-verification')
 
-// EASILY READ THE PAYLOAD FROM THE WEBHOOK
-app.use(bodyParser.json());
+// READ THE PAYLOAD FROM THE WEBHOOK
+const options = { type: 'json' }
+app.use(bodyParser.raw(options));
 
 // OBJECT TO THROW WHEN NOT AN ERROR
 function Thrower(message) {
@@ -38,27 +39,38 @@ function Thrower(message) {
   console.log(message);
 }
 
-// VERIFY UUID FROM WISTIA PAYLOAD IS THE ONE WE WANT, IF NOT DON'T RUN API CALLS
-// NOTE: IN THE FUTURE MAKE THIS USE WISTIA'S SECRET KEY INSTEAD OF UUID FOR MATCHING. THAT WILL BE MORE FRIENDLY TO SET UP ANYWAYS
+// VERIFY SIGNATURE FROM WISTIA WEBHOOK SECRET KEY MATCHES THE PAYLOAD FROM WISTIA, IF NOT DON'T RUN API CALLS
 function verify(req, res, next) {
-  if (req.body.hook.uuid === uuid) {
+  const headers = req.headers
+  const wistiaSignature = headers['x-wistia-signature']
+  // console.log("Wistia Signature: ", wistiaSignature)
+
+  const requestBody = req.body
+  const computedHash = getHash(requestBody)
+  // console.log("The computed hash is: ", computedHash)
+
+  if (wistiaSignature === computedHash) {
+    console.log("Signature Looks Good!")
     next();
   } else {
     res.sendStatus(200);
-    console.log('Desired UUID Not Present');
+    console.log('Valid Signature Not Present!');
   }
 }
 
 // DO ALL THE API STUFF
 function hubstia(req, res, next) {
   // VISITOR KEY COMES FROM WEBHOOK PAYLOAD FROM WISTIA
-  console.log('Wistia Visitor `id`: ' + req.body.events[0].payload.visitor.id);
+  const requestBody = req.body;
+  const payload = JSON.parse(requestBody).events[0].payload;
+
+  console.log('Wistia Visitor `id`: ' + payload.visitor.id);
 
   // VARS
   let playCount = 0;
   let	videosPlayed = 0;
   let	contactEmail = 'bh@hubspot.com';
-  const visitorKey = req.body.events[0].payload.visitor.id;
+  const visitorKey = payload.visitor.id;
 
   // CALL TO WISTIA WITH KEY FROM WEBHOOK PAYLOAD TRIGGERED BY A VIDEO PLAY EVENT
   const wistiaPath = 'https://api.wistia.com/v1/stats/visitors/' + visitorKey + '.json?api_password=' + wapiKey;
