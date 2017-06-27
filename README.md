@@ -1,3 +1,6 @@
+## This is now doable with the New HubSpot x Wistia V2 integration.
+Set up a Workflow to enroll users based on **Play Property** Percent Watched is greater than 0. Then the next step have the Workflow increment a Contact Record (Videos Played) value by 1. *Make sure to set the Re-encrollment criteria to re-enroll users if the Play property is greater than 0* this will make sure that the value keeps on incrementing for each video they watch. 
+
 # hubstia
 
 > Getting Wistia visitor play counts into HubSpot contact records since 2017.
